@@ -22,6 +22,7 @@
 </template>
 
 <script setup>
+import chinaGeoJSON from './assets/china.json';
 import { Search } from '@element-plus/icons-vue';
 import { ref, onMounted } from 'vue';
 import Map from 'ol/Map.js';
@@ -74,6 +75,7 @@ let map, popup, cityLayer, drawLayer, iconLayer,iconSource, draw;
 let sldtLayer,slzjLayer,ygyxLayer,yxzjLayer;
 const gaodeKey = import.meta.env.VITE_AMAP_KEY;
 const tiandituKey=import.meta.env.VITE_TIANDITU_KEY;
+const allFeatures = new GeoJSON().readFeatures(chinaGeoJSON);
 onMounted(async () => {
 sldtLayer = new TileLayer({
         source: new XYZ({
@@ -148,7 +150,7 @@ yxzjLayer = new TileLayer({
     });
   }
 
-  // 单个要素：返回原始要素的样式（即你设置的 Icon）
+  // 单个要素：返回原始要素的样式（即设置的 Icon）
   const originalFeature = features[0];
   // 如果原始要素有样式，直接返回；否则可返回默认样式
   return originalFeature.getStyle() || new Style({
@@ -170,21 +172,7 @@ yxzjLayer = new TileLayer({
   const temp2 = await fetch(`https://restapi.amap.com/v3/geocode/geo?address=${city.value}&key=${gaodeKey}`);
   const res2 = await temp2.json();
   cityLocation.value = res2.geocodes[0].location.split(',').map(Number);
-    cityLayer = new VectorLayer({
-      source: new VectorSource({
-        url: `https://geo.datav.aliyun.com/areas_v3/bound/${adcode.value}.json`,
-        format: new GeoJSON(),
-      }),
-      style: new Style({
-        fill: new Fill({
-          color: 'rgba(255,0,0,0.5)',
-        }),
-        stroke: new Stroke({
-          color: 'black',
-          width: 1,
-        }),
-      }),
-    });
+    cityLayer = buildCityLayer(adcode.value);
     map.getView().animate({
       center: cityLocation.value,
       zoom: 9,
@@ -252,21 +240,7 @@ async function handleSearchCity() {
   city.value = res.geocodes[0].city;
   adcode.value = res.geocodes[0].adcode;
   cityLocation.value = res.geocodes[0].location.split(',').map(Number);
-  cityLayer = new VectorLayer({
-    source: new VectorSource({
-      url: `https://geo.datav.aliyun.com/areas_v3/bound/${adcode.value}.json`,
-      format: new GeoJSON(),
-    }),
-    style: new Style({
-      fill: new Fill({
-        color: 'rgba(255,0,0,0.5)',
-      }),
-      stroke: new Stroke({
-        color: 'black',
-        width: 1,
-      }),
-    }),
-  });
+  cityLayer = buildCityLayer(adcode.value);
   map.getView().animate({
     center: cityLocation.value,
     zoom: 9,
@@ -379,6 +353,17 @@ function swtyx(){
   sldtLayer.setVisible(false);
   yxzjLayer.setVisible(true);
   slzjLayer.setVisible(false);
+};
+//通过本地json获取城市要素
+function buildCityLayer(adcode) {
+  const feats = allFeatures.filter(f => String(f.get('adcode')) === String(adcode));
+  return new VectorLayer({
+    source: new VectorSource({ features: feats }),
+    style: new Style({
+      fill: new Fill({ color: 'rgba(255,0,0,0.5)' }),
+      stroke: new Stroke({ color: 'black', width: 1 }),
+    }),
+  });
 };
 </script>
 
